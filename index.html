@@ -39,15 +39,15 @@ body.loading .modal {
 </head>
 <body>
 <div class="container">
-	<div class="jumbotron">
-    	<h1>OpenCV - Circle Detection</h1> 
-    	<p>This website uses OpenCVJS to detect circles in any uploaded image.</p> 
+	<div class="page-header">
+    	<h1>Verificar Torsão</h1> 
+    	<p>Verifica a torsão após lavado</p> 
   	</div>
 	<div class="row">
-  		<div class="col-sm">
+  		<div class="col-md">
   			<div class="card">
 			  	<div class="card-header">
-			    Original Image
+			    Imagem Original 
 			  	</div>
 			  	<div class="card-block text-center">
 			    	<img id="imageOriginal" alt="Upload" class="card-img-top"/>
@@ -57,17 +57,17 @@ body.loading .modal {
 			  	</div>
 			</div>
   		</div>
-  		<div class="col-sm">
+  		<div class="col-md">
   			<div class="card">
 			  	<div class="card-header">
-			    Modified Image
+			    Imagem Modificada
 			  	</div>
 			  	<div class="card-block">
 			    	<canvas id="imageCanvas"></canvas>
 			  	</div>
 			  	<ul class="list-group list-group-flush">
 				    <li class="list-group-item">
-				    	<button type="button" id="circlesButton" class="btn btn-primary" disabled>Circle Detection</button>
+				    	<button type="button" id="circlesButton" class="btn btn-primary" disabled>Detectar</button>
 				    </li>
 				</ul>
 				<div class="card-footer">
