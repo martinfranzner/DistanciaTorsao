@@ -1,0 +1,338 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Distancias Torsão</title>
+<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0-beta.2/css/bootstrap.min.css" integrity="sha384-PsH8R72JQ3SOdhVi3uxftmaW6Vc51MKb0q5P2rRUpPvrszuE4W1povHYgTpBfshb" crossorigin="anonymous">
+<style type="text/css">
+	/* Start by setting display:none to make this hidden.
+   Then we position it in relation to the viewport window
+   with position:fixed. Width, height, top and left speak
+   for themselves. Background we set to 80% white with
+   our animation centered, and no-repeating */
+.modal {
+    display:    none;
+    position:   fixed;
+    z-index:    1000;
+    top:        0;
+    left:       0;
+    height:     100%;
+    width:      100%;
+    background: rgba( 255, 255, 255, .8 ) 
+                url('http://i.stack.imgur.com/FhHRx.gif') 
+                50% 50% 
+                no-repeat;
+}
+
+/* When the body has the loading class, we turn
+   the scrollbar off with overflow:hidden */
+body.loading {
+    overflow: hidden;   
+}
+
+/* Anytime the body has the loading class, our
+   modal element will be visible */
+body.loading .modal {
+    display: block;
+}
+</style>
+</head>
+<body>
+<div class="container">
+	<div class="jumbotron">
+    	<h1>OpenCV - Circle Detection</h1> 
+    	<p>This website uses OpenCVJS to detect circles in any uploaded image.</p> 
+  	</div>
+	<div class="row">
+  		<div class="col-sm">
+  			<div class="card">
+			  	<div class="card-header">
+			    Original Image
+			  	</div>
+			  	<div class="card-block text-center">
+			    	<img id="imageOriginal" alt="Upload" class="card-img-top"/>
+			  	</div>
+			  	<div class="card-footer text-muted">
+			    	<input type="file" id="imageInput" name="file" />
+			  	</div>
+			</div>
+  		</div>
+  		<div class="col-sm">
+  			<div class="card">
+			  	<div class="card-header">
+			    Modified Image
+			  	</div>
+			  	<div class="card-block">
+			    	<canvas id="imageCanvas"></canvas>
+			  	</div>
+			  	<ul class="list-group list-group-flush">
+				    <li class="list-group-item">
+				    	<button type="button" id="circlesButton" class="btn btn-primary" disabled>Circle Detection</button>
+				    </li>
+				</ul>
+				<div class="card-footer">
+				    <a href="#" id="button" class="card-link">Download Image</a>
+				</div>
+			</div>
+  		</div>
+  	</div>
+</div>
+<div class="modal"></div>
+
+
+
+
+<script type="text/javascript">
+document.body.classList.add("loading");
+
+let imgElement = document.getElementById('imageOriginal');
+let inputElement = document.getElementById('imageInput');
+inputElement.addEventListener('change', (e) => {
+  imgElement.src = URL.createObjectURL(e.target.files[0]);
+}, false);
+let mat;
+
+imgElement.onload = function() {
+  mat = cv.imread(imgElement);
+  cv.imshow('imageCanvas', mat);
+  
+  //enable button now
+  const buttonCircle = document.getElementById('circlesButton');
+  buttonCircle.disabled = false;
+};
+
+
+
+document.getElementById('circlesButton').onclick = function() {
+	this.disabled = true;
+
+  	// let mat = cv.imread('imageCanvas');
+	let dst = mat.clone();
+	let circles = new cv.Mat();
+    //cv.cvtColor(mat, mat, cv.COLOR_RGBA2GRAY, 0);
+    // You can try more different parameters
+    
+    //new code
+    //let src = cv.imread('imageCanvas');
+    let src = new cv.Mat();
+    //let dst = new cv.Mat();
+    let dst1 = new cv.Mat();
+    let gray = new cv.Mat();
+    let myMean = new cv.Mat(1,4,cv.CV_64F);
+    let myStddev = new cv.Mat(1,4,cv.CV_64F);
+
+    // You can try more different parameters
+    cv.cvtColor(mat, gray, cv.COLOR_RGBA2GRAY, 0);
+    cv.meanStdDev(gray, myMean, myStddev);
+    console.log('Mean value'+myMean.doubleAt(0,0))
+
+    let ksize = new cv.Size(9, 9);
+    cv.GaussianBlur(gray, gray, ksize, 0, 0, cv.BORDER_DEFAULT);
+    dst1 = cv.Mat.zeros(gray.rows, gray.cols, cv.CV_8UC3);
+    cv.threshold(gray, dst, myMean.doubleAt(0,0)*0.3, 255, cv.THRESH_BINARY_INV);
+
+    cv.threshold(gray, dst1, myMean.doubleAt(0,0)*1.7, 255, cv.THRESH_BINARY);
+
+    let drawed = cv.Mat.zeros(gray.rows, gray.cols, cv.CV_8UC3);
+    
+    //cv.cvtColor(dst1, dst1, cv.COLOR_GRAY2RGBA, 0);
+
+    let contours = new cv.MatVector();  
+
+    let hierarchy = new cv.Mat(); 
+
+    let poly = new cv.MatVector();
+
+    cv.findContours(dst1, contours,hierarchy, cv.RETR_EXTERNAL,cv.CHAIN_APPROX_SIMPLE);
+
+    console.log("Contours:",contours);
+    console.log("Hierarchy:",hierarchy);
+    //find min area rect
+    var meanPoints = [];
+    
+    for (var i = 0; i < contours.size(); ++i){
+    
+      var arrayPoints = cv.RotatedRect.points(cv.minAreaRect(contours.get(i)));
+      console.log(arrayPoints);
+
+      const sumX = arrayPoints.map(element => element.x).reduce((a, b) => a + b, 0);
+      const meanX = sumX / arrayPoints.length;
+      console.log(meanX);
+      const sumY = arrayPoints.map(element => element.y).reduce((a, b) => a + b, 0);
+      const meanY = sumY / arrayPoints.length;
+      console.log(meanY);
+
+      let color = new cv.Scalar(0, 0, 255);
+      let center = new cv.Point(meanX,meanY);
+      //cv.putText(drawed,i.toString(),center,cv.FONT_HERSHEY_SIMPLEX, 0.5, color,2);
+      meanPoints.push({cX:meanX,cY:meanY,positionOrig:i,box:arrayPoints});
+    }
+    console.log("Mean Points",meanPoints);
+    //var newMeanPoints = meanPoints;
+    // for(var i = 0; i < newMeanPoints.length; ++i){
+    //   newMeanPoints.positionOrig = i;
+    // }
+    function sortByPosition(a, b){
+      if (a.cX == b.cX) return a.cY - b.cY;
+      return a.cX - b.cX;
+    }
+    meanPoints.sort(sortByPosition);
+
+    console.log("newMeanPoints:",meanPoints);
+
+
+    for (var i = 0; i < meanPoints.length; ++i){
+    // You can try more different parameters
+      let center = new cv.Point(meanPoints[i].cX,meanPoints[i].cY);
+      cv.circle(drawed,center, 2, new cv.Scalar(0,255,0), -1);
+
+      let contoursColor = new cv.Scalar(255, 0, 255);
+      let centerText = new cv.Point(meanPoints[i].cX+10,meanPoints[i].cY-15);
+      cv.putText(drawed,i.toString(),centerText, cv.FONT_HERSHEY_SIMPLEX, 0.7,contoursColor,2)
+    }
+
+    function midPoint(ptA,ptB){
+      return [(ptA.x + ptB.x) * 0.5, (ptA.y + ptB.y) * 0.5]
+    }
+
+    var referencia = meanPoints[0]
+    var boxRef = referencia.box
+    var tlblXY = midPoint(boxRef[0],boxRef[3])
+    var trbrXY = midPoint(boxRef[1],boxRef[2])
+    console.log("Midpoints:",tlblXY,trbrXY);
+    console.log(referencia)
+    let lineColor = new cv.Scalar(0, 255, 255);
+    let pointRef1 = new cv.Point(tlblXY[0],tlblXY[1]);
+    let pointRef2 = new cv.Point(trbrXY[0],trbrXY[1]);
+    console.log(pointRef1);
+    //line of the coin
+    //cv.line(drawed, pointRef1, pointRef2, lineColor, 2, cv.LINE_AA, 0);
+    
+
+    function euclideanDistance(point1,point2){
+      var a = point1.x - point2.x; // x1 - x2
+      var b = point1.y - point2.y; //y1 - y2
+      var c = Math.sqrt( a*a + b*b );
+      console.log("Eclidean Dist", c);
+      return c.toFixed(2);
+    }
+
+  function perpendicularLineFromMidPoint(point1,point2){
+    slope = (point2.y - point1.y) /(point2.x - point1.x)
+    slope = -1/slope
+    midpointX = (point1.x + point2.x) / 2;
+    midpointY = (point1.y + point2.y) / 2;
+    b = -slope * midpointX + midpointY;
+    x4 = midpointX + (-50);
+    y4 = parseInt((slope * (midpointX + (-50)) + b));
+    
+    let mid = new cv.Point(midpointX,midpointY);
+    let perp = new cv.Point(x4,y4);
+    return [mid,perp]
+  }
+  function perpendicularLineFromMidPointHorizontal(point1,point2){
+    slope = (point2.y - point1.y) /(point2.x - point1.x)
+    slope = -1/slope
+    midpointX = (point1.x + point2.x) / 2;
+    midpointY = (point1.y + point2.y) / 2;
+    b = -slope * midpointX + midpointY;
+    x4 = midpointX + (+1500);
+    y4 = parseInt((slope * (midpointX + (+1500)) + b));
+    
+    let mid = new cv.Point(midpointX,midpointY);
+    let perp = new cv.Point(x4,y4);
+    return [mid,perp]
+  }
+
+  //p1 and p2 are the orig line from dots, p3 and p4 are the perpendicular line
+  function findIntersection(p1,p2,p3,p4){
+        px= ( (p1.x*p2.y-p1.y*p2.x)*(p3.x-p4.x)-(p1.x-p2.x)*(p3.x*p4.y-p3.y*p4.x) ) / ( (p1.x-p2.x)*(p3.y-p4.y)-(p1.y-p2.y)*(p3.x-p4.x) ) 
+        py= ( (p1.x*p2.y-p1.y*p2.x)*(p3.y-p4.y)-(p1.y-p2.y)*(p3.x*p4.y-p3.y*p4.x) ) / ( (p1.x-p2.x)*(p3.y-p4.y)-(p1.y-p2.y)*(p3.x-p4.x) )
+        let point = new cv.Point(px,py);
+        return point
+  }
+
+    var widthRefObj = 27; //in mm
+    referencia.ratio = euclideanDistance(pointRef1,pointRef2)/widthRefObj; //pixels per mm
+    console.log(referencia);
+
+    let point1 = new cv.Point(meanPoints[1].cX,meanPoints[1].cY);
+    let point2 = new cv.Point(meanPoints[2].cX,meanPoints[2].cY);
+    let point3 = new cv.Point(meanPoints[3].cX,meanPoints[3].cY);
+    let point4 = new cv.Point(meanPoints[4].cX,meanPoints[4].cY);
+    let point5 = new cv.Point(meanPoints[5].cX,meanPoints[5].cY);
+    let point6 = new cv.Point(meanPoints[6].cX,meanPoints[6].cY);
+    let point7 = new cv.Point(meanPoints[7].cX,meanPoints[7].cY);
+    let point8 = new cv.Point(meanPoints[8].cX,meanPoints[8].cY);
+
+    //lines and distance from square
+    let lineColor16 = new cv.Scalar(130, 20, 255);
+    cv.line(drawed, point1, point6, lineColor16, 1, cv.LINE_AA, 0);
+    var dist1to6 = (euclideanDistance(point1,point6)/referencia.ratio).toFixed(2);
+    cv.putText(drawed,dist1to6.toString()+'mm',point1, cv.FONT_HERSHEY_SIMPLEX, 0.5,lineColor16,2)
+    
+    let lineColor3 = new cv.Scalar(0, 200, 255);
+    cv.line(drawed, point3, point8, lineColor3, 1, cv.LINE_AA, 0);
+    var dist3to8 = (euclideanDistance(point3,point8)/referencia.ratio).toFixed(2);
+    cv.putText(drawed,dist3to8.toString()+'mm',point3, cv.FONT_HERSHEY_SIMPLEX, 0.5,lineColor3,2)
+
+    let lineColor13 = new cv.Scalar(255, 200, 0);
+    cv.line(drawed, point1, point3, lineColor13, 1, cv.LINE_AA, 0);
+    var dist1to3 = (euclideanDistance(point1,point3)/referencia.ratio).toFixed(2);
+    cv.putText(drawed,dist1to3.toString()+'mm',point2, cv.FONT_HERSHEY_SIMPLEX, 0.5,lineColor13,2)
+
+    let lineColor68 = new cv.Scalar(120, 200, 100);
+    cv.line(drawed, point6, point8, lineColor68, 1, cv.LINE_AA, 0);
+    var dist6to8 = (euclideanDistance(point6,point8)/referencia.ratio).toFixed(2);
+    cv.putText(drawed,dist6to8.toString()+'mm',point6, cv.FONT_HERSHEY_SIMPLEX, 0.5,lineColor68,2)
+
+    //perpendicular lines
+    let lineColorPerp13 = new cv.Scalar(120, 45, 140);
+    let perpLine13 = perpendicularLineFromMidPointHorizontal(point1,point3)
+    cv.line(drawed, perpLine13[0], perpLine13[1], lineColorPerp13, 1, cv.LINE_AA, 0);
+
+    let lineColorPerp38 = new cv.Scalar(120, 45, 140);
+    let perpLine38 = perpendicularLineFromMidPoint(point3,point8)
+    cv.line(drawed, perpLine38[0], perpLine38[1], lineColorPerp38, 1, cv.LINE_AA, 0);
+
+    //find intersection
+    var intersec68 = findIntersection(point6,point8,perpLine13[0],perpLine13[1]);
+    console.log(intersec68);
+    cv.circle(drawed,intersec68, 2, new cv.Scalar(255,0,0), -1);
+
+    //find intersection
+    var intersec16 = findIntersection(point1,point6,perpLine38[0],perpLine38[1]);
+    console.log(intersec16);
+    cv.circle(drawed,intersec16, 2, new cv.Scalar(255,0,0), -1);
+
+
+    //distances from interstion to original middle point drawd in pen on fabric
+    var colorDistance = new cv.Scalar(255,204,204);
+    var dist4toIntersec = (euclideanDistance(point4,intersec16)/referencia.ratio).toFixed(2);
+    console.log(dist4toIntersec);
+    cv.putText(drawed,dist4toIntersec.toString()+'mm',point4, cv.FONT_HERSHEY_SIMPLEX, 0.5,colorDistance,2)
+    var dist7toIntersec = (euclideanDistance(point7,intersec68)/referencia.ratio).toFixed(2);
+    console.log(dist7toIntersec);
+    cv.putText(drawed,dist7toIntersec.toString()+'mm',point7, cv.FONT_HERSHEY_SIMPLEX, 0.5,colorDistance,2)
+
+	
+	cv.imshow('imageCanvas', drawed);
+	mat.delete();
+	dst.delete();
+	circles.delete();
+
+	this.disabled = false;
+};
+
+document.getElementById('button').onclick = function() {
+    this.href = document.getElementById("imageCanvas").toDataURL();
+    this.download = "image.png";
+};
+
+function onOpenCvReady() {
+  document.body.classList.remove("loading");
+}
+</script>
+<script async src="opencv.js" onload="onOpenCvReady();" type="text/javascript"></script>
+</body>
+</html>
